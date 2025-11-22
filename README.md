@@ -1,24 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a [Next.js](https://nextjs.org) project with a simple Browserbase implementation example (without Trigger.dev).
+
+## Browserbase Simple Example
+
+This project demonstrates how to use Browserbase for browser automation with geolocated proxies. The implementation includes:
+
+- **Simple Browserbase Service** (`lib/browserbase-simple.ts`): Standalone service for managing Browserbase sessions
+- **API Route** (`app/api/proxy/route.ts`): Next.js API endpoint that uses Browserbase to proxy requests
+- **Example UI** (`app/page.tsx`): Simple interface to test Browserbase requests
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install Dependencies
+
+Dependencies are already installed, but if you need to reinstall:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+bun install
+```
+
+### 2. Set Up Environment Variables
+
+Create a `.env.local` file in the root directory:
+
+```bash
+BROWSERBASE_API_KEY=your_api_key_here
+BROWSERBASE_PROJECT_ID=your_project_id_here
+```
+
+You can get these credentials from your [Browserbase dashboard](https://www.browserbase.com/).
+
+### 3. Run the Development Server
+
+```bash
 bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Test the Example
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Enter a URL in the input field (e.g., `https://httpbin.org/json`)
+2. Click "Make Request"
+3. View the response and session status
+
+## How It Works
+
+The Browserbase service:
+- Creates browser sessions with Colombian IP addresses (configurable in `lib/browserbase-simple.ts`)
+- Manages session lifecycle (create, rotate after 50 requests, close)
+- Uses Puppeteer for real browser automation
+- Implements delays and realistic headers for human-like behavior
+
+## API Usage
+
+You can also use the API route directly:
+
+```bash
+curl "http://localhost:3000/api/proxy?url=https://httpbin.org/json"
+```
+
+## Configuration
+
+You can customize the service behavior in `lib/browserbase-simple.ts`:
+
+- `maxRequestsPerSession`: Number of requests before rotating session (default: 50)
+- `geolocation`: Change country/city for proxy location
+- Request delays and headers can be adjusted in the `makeRequest` method
 
 ## Learn More
 

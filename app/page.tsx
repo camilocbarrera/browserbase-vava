@@ -1,64 +1,212 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
 
 export default function Home() {
+  const [url, setUrl] = useState("https://luma.com/slqfykte");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const matchesSearch = (item: any, query: string): boolean => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    const itemStr = JSON.stringify(item).toLowerCase();
+    return itemStr.includes(q) ||
+      item.url?.toLowerCase().includes(q) ||
+      item.method?.toLowerCase().includes(q) ||
+      item.status?.toString().includes(q) ||
+      item.statusText?.toLowerCase().includes(q) ||
+      item.resourceType?.toLowerCase().includes(q) ||
+      item.failureText?.toLowerCase().includes(q);
+  };
+
+  const handleRequest = async () => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    setSearchQuery("");
+
+    try {
+      const response = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Request failed");
+      }
+
+      setResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-white dark:bg-black font-sans">
+      <main className="max-w-6xl mx-auto p-8">
+        <div className="mb-12">
+          <h1 className="text-2xl font-normal mb-1 text-black dark:text-zinc-50">
+            Browserbase
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-sm text-zinc-500 dark:text-zinc-500">
+            Network capture with geolocated proxy
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        <div className="space-y-3 mb-8">
+          <div>
+            <input
+              id="url"
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className="w-full px-3 py-2 border-b border-zinc-300 dark:border-zinc-700 bg-transparent text-black dark:text-zinc-50 focus:outline-none focus:border-black dark:focus:border-zinc-50"
+              placeholder="https://luma.com/slqfykte"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+
+          <button
+            onClick={handleRequest}
+            disabled={loading || !url}
+            className="w-full px-3 py-2 bg-black dark:bg-white text-white dark:text-black font-normal hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Documentation
-          </a>
+            {loading ? "Loading..." : "Request"}
+          </button>
         </div>
+
+        {result && (
+          <div className="space-y-8">
+            <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 border-b border-zinc-300 dark:border-zinc-700 bg-transparent text-black dark:text-zinc-50 focus:outline-none focus:border-black dark:focus:border-zinc-50 text-xs font-mono"
+                placeholder="Search network logs..."
+              />
+            </div>
+
+            <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+              <h2 className="text-xs uppercase tracking-wide mb-3 text-zinc-500 dark:text-zinc-500">
+                Session
+              </h2>
+              <pre className="text-xs text-zinc-700 dark:text-zinc-300 overflow-x-auto font-mono">
+                {JSON.stringify(result.sessionStatus, null, 2)}
+              </pre>
+            </div>
+
+            <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+              <h2 className="text-xs uppercase tracking-wide mb-3 text-zinc-500 dark:text-zinc-500">
+                Response ({result.status})
+              </h2>
+              <pre className="text-xs text-zinc-700 dark:text-zinc-300 overflow-x-auto max-h-64 overflow-y-auto font-mono">
+                {JSON.stringify(result.data, null, 2)}
+              </pre>
+            </div>
+
+            <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+              <h2 className="text-xs uppercase tracking-wide mb-3 text-zinc-500 dark:text-zinc-500">
+                DOM ({result.dom?.length || 0} chars)
+              </h2>
+              <details>
+                <summary className="cursor-pointer text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white mb-2">
+                  View HTML
+                </summary>
+                <pre className="text-xs text-zinc-600 dark:text-zinc-400 overflow-x-auto max-h-64 overflow-y-auto font-mono mt-2">
+                  {result.dom || "No DOM content"}
+                </pre>
+              </details>
+            </div>
+
+            <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+              <h2 className="text-xs uppercase tracking-wide mb-3 text-zinc-500 dark:text-zinc-500">
+                Requests ({searchQuery ? result.networkRequests?.filter((req: any) => matchesSearch(req, searchQuery)).length || 0 : result.networkRequests?.length || 0})
+              </h2>
+              <div className="space-y-1 max-h-96 overflow-y-auto">
+                {result.networkRequests?.filter((req: any) => matchesSearch(req, searchQuery)).map((req: any, idx: number) => (
+                  <details key={idx} className="border-l border-zinc-200 dark:border-zinc-800 pl-3 py-1">
+                    <summary className="cursor-pointer text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white">
+                      <span className="font-normal">{req.method}</span>{" "}
+                      <span className="text-zinc-400">[{req.resourceType || "unknown"}]</span>{" "}
+                      <span className="text-zinc-500">{req.url.substring(0, 80)}{req.url.length > 80 ? "..." : ""}</span>
+                    </summary>
+                    <pre className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 overflow-x-auto font-mono">
+                      {JSON.stringify(req, null, 2)}
+                    </pre>
+                  </details>
+                ))}
+                {(!result.networkRequests || result.networkRequests.length === 0) && (
+                  <p className="text-xs text-zinc-400">No requests</p>
+                )}
+                {searchQuery && result.networkRequests?.filter((req: any) => matchesSearch(req, searchQuery)).length === 0 && result.networkRequests && result.networkRequests.length > 0 && (
+                  <p className="text-xs text-zinc-400">No matching requests</p>
+                )}
+              </div>
+            </div>
+
+            <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+              <h2 className="text-xs uppercase tracking-wide mb-3 text-zinc-500 dark:text-zinc-500">
+                Responses ({searchQuery ? result.networkResponses?.filter((res: any) => matchesSearch(res, searchQuery)).length || 0 : result.networkResponses?.length || 0})
+              </h2>
+              <div className="space-y-1 max-h-96 overflow-y-auto">
+                {result.networkResponses?.filter((res: any) => matchesSearch(res, searchQuery)).map((res: any, idx: number) => (
+                  <details key={idx} className="border-l border-zinc-200 dark:border-zinc-800 pl-3 py-1">
+                    <summary className="cursor-pointer text-xs font-mono text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white">
+                      <span className={`font-normal ${res.status >= 400 ? "text-red-600" : res.status >= 300 ? "text-yellow-600" : ""}`}>
+                        {res.status} {res.statusText}
+                      </span>{" "}
+                      <span className="text-zinc-500">{res.url.substring(0, 80)}{res.url.length > 80 ? "..." : ""}</span>
+                    </summary>
+                    <pre className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 overflow-x-auto font-mono">
+                      {JSON.stringify(res, null, 2)}
+                    </pre>
+                  </details>
+                ))}
+                {(!result.networkResponses || result.networkResponses.length === 0) && (
+                  <p className="text-xs text-zinc-400">No responses</p>
+                )}
+                {searchQuery && result.networkResponses?.filter((res: any) => matchesSearch(res, searchQuery)).length === 0 && result.networkResponses && result.networkResponses.length > 0 && (
+                  <p className="text-xs text-zinc-400">No matching responses</p>
+                )}
+              </div>
+            </div>
+
+            {result.networkFailed && result.networkFailed.length > 0 && (
+              <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+                <h2 className="text-xs uppercase tracking-wide mb-3 text-zinc-500 dark:text-zinc-500">
+                  Failed ({searchQuery ? result.networkFailed.filter((failed: any) => matchesSearch(failed, searchQuery)).length : result.networkFailed.length})
+                </h2>
+                <div className="space-y-1 max-h-96 overflow-y-auto">
+                  {result.networkFailed.filter((failed: any) => matchesSearch(failed, searchQuery)).map((failed: any, idx: number) => (
+                    <details key={idx} className="border-l border-red-300 dark:border-red-800 pl-3 py-1">
+                      <summary className="cursor-pointer text-xs font-mono text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">
+                        {failed.failureText || "Unknown"} - {failed.url.substring(0, 80)}{failed.url.length > 80 ? "..." : ""}
+                      </summary>
+                      <pre className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 overflow-x-auto font-mono">
+                        {JSON.stringify(failed, null, 2)}
+                      </pre>
+                    </details>
+                  ))}
+                  {searchQuery && result.networkFailed.filter((failed: any) => matchesSearch(failed, searchQuery)).length === 0 && (
+                    <p className="text-xs text-zinc-400">No matching failed requests</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {error && (
+          <div className="mt-8 border-b border-red-300 dark:border-red-800 pb-4">
+            <h2 className="text-xs uppercase tracking-wide mb-2 text-red-600 dark:text-red-400">
+              Error
+            </h2>
+            <p className="text-xs text-red-600 dark:text-red-400 font-mono">{error}</p>
+          </div>
+        )}
       </main>
     </div>
   );
