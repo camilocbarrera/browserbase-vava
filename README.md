@@ -25,9 +25,11 @@ Create a `.env.local` file in the root directory:
 ```bash
 BROWSERBASE_API_KEY=your_api_key_here
 BROWSERBASE_PROJECT_ID=your_project_id_here
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-You can get these credentials from your [Browserbase dashboard](https://www.browserbase.com/).
+You can get Browserbase credentials from your [Browserbase dashboard](https://www.browserbase.com/).
+You can get OpenAI API key from your [OpenAI dashboard](https://platform.openai.com/api-keys).
 
 ### 3. Run the Development Server
 
@@ -39,17 +41,34 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ### 4. Test the Example
 
-1. Enter a URL in the input field (e.g., `https://httpbin.org/json`)
-2. Click "Make Request"
-3. View the response and session status
+1. Enter a URL in the input field (e.g., `https://luma.com/slqfykte`)
+2. Click "Request" to capture network logs
+3. View the response, DOM, and network activity
+4. Use the "Data Extraction" section to generate Puppeteer code for extracting specific data:
+   - Enter a prompt (e.g., "get the hosts")
+   - Click "Generate Code" to create extraction code using GPT-4o-mini
+   - Review the generated code
+   - Click "Execute" to run the code and extract data
 
 ## How It Works
 
 The Browserbase service:
-- Creates browser sessions with Colombian IP addresses (configurable in `lib/browserbase-simple.ts`)
+- Creates browser sessions with Colombian IP addresses (configurable in `lib/browserbase.ts`)
 - Manages session lifecycle (create, rotate after 50 requests, close)
 - Uses Puppeteer for real browser automation
 - Implements delays and realistic headers for human-like behavior
+- Captures all network requests, responses, and DOM content
+
+## LLM-Powered Data Extraction
+
+The system includes an AI-powered reverse engineering workflow:
+
+1. **Network Capture**: Capture all network activity from a web page
+2. **Code Generation**: Use GPT-4o-mini to analyze responses and generate deterministic Puppeteer extraction code
+3. **Code Review**: Review the generated code before execution
+4. **Execution**: Execute the code in the same browser session to extract structured JSON data
+
+This allows you to reverse engineer web APIs and extract data deterministically by analyzing network responses.
 
 ## API Usage
 

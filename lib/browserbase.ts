@@ -350,6 +350,86 @@ export class SimpleBrowserbaseService {
       ),
     };
   }
+
+  async navigateToUrl(url: string): Promise<Page> {
+    const session = await this.getOrCreateSession();
+    
+    if (!session.page) {
+      throw new Error("Browser page not initialized");
+    }
+
+    const defaultHeaders = {
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+      "Accept-Language": "es-CO,es;q=0.9,en;q=0.8",
+      "Accept-Encoding": "gzip, deflate, br",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Origin: new URL(url).origin,
+      Referer: new URL(url).origin + "/",
+      DNT: "1",
+      Connection: "keep-alive",
+      "Sec-Fetch-Dest": "document",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "none",
+      "Sec-Fetch-User": "?1",
+      "Upgrade-Insecure-Requests": "1",
+    };
+
+    await session.page.setExtraHTTPHeaders(defaultHeaders);
+
+    await session.page.goto(url, {
+      waitUntil: "networkidle2",
+      timeout: 60000,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    return session.page;
+  }
+
+  async executeCode(page: Page, code: string): Promise<any> {
+    const sanitizedCode = code.trim();
+
+    if (!sanitizedCode) {
+      throw new Error("Code is empty");
+    }
+
+    if (sanitizedCode.includes("require(") || sanitizedCode.includes("import ")) {
+      throw new Error("Code cannot contain require or import statements");
+    }
+
+    const startTime = Date.now();
+
+    try {
+      const wrappedCode = `
+        (async () => {
+          const page = arguments[0];
+          ${sanitizedCode}
+        })
+      `;
+
+      const extractionFunction = eval(wrappedCode);
+      
+      const result = await Promise.race([
+        extractionFunction(page),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Code execution timeout")), 30000)
+        ),
+      ]) as any;
+
+      return {
+        data: result,
+        metadata: {
+          extractedAt: new Date().toISOString(),
+          executionTime: Date.now() - startTime,
+        },
+      };
+    } catch (error) {
+      console.error("Code execution error:", error);
+      throw new Error(
+        `Code execution failed: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }
 }
 
 export const browserbaseService = new SimpleBrowserbaseService();

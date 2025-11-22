@@ -8,6 +8,12 @@ export default function Home() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [extractionPrompt, setExtractionPrompt] = useState("");
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [executingCode, setExecutingCode] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [extractionResult, setExtractionResult] = useState<any>(null);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
 
   const matchesSearch = (item: any, query: string): boolean => {
     if (!query) return true;
@@ -27,6 +33,9 @@ export default function Home() {
     setError(null);
     setResult(null);
     setSearchQuery("");
+    setGeneratedCode(null);
+    setExtractionResult(null);
+    setExtractionError(null);
 
     try {
       const response = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`);
@@ -41,6 +50,75 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateCode = async () => {
+    if (!extractionPrompt || !result) return;
+
+    setGeneratingCode(true);
+    setExtractionError(null);
+    setGeneratedCode(null);
+    setExtractionResult(null);
+
+    try {
+      const mainResponse = result.data || result.networkResponses?.find(
+        (r: any) => r.status === 200
+      ) || result;
+
+      const response = await fetch("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: extractionPrompt,
+          responseData: mainResponse,
+          url: url,
+          dom: result.dom,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Code generation failed");
+      }
+
+      setGeneratedCode(data.code);
+    } catch (err) {
+      setExtractionError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setGeneratingCode(false);
+    }
+  };
+
+  const handleExecuteCode = async () => {
+    if (!generatedCode || !url) return;
+
+    setExecutingCode(true);
+    setExtractionError(null);
+    setExtractionResult(null);
+
+    try {
+      const response = await fetch("/api/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: generatedCode,
+          url: url,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Code execution failed");
+      }
+
+      setExtractionResult(data);
+    } catch (err) {
+      setExtractionError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setExecutingCode(false);
     }
   };
 
@@ -194,6 +272,74 @@ export default function Home() {
                     <p className="text-xs text-zinc-400">No matching failed requests</p>
                   )}
                 </div>
+              </div>
+            )}
+
+            <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+              <h2 className="text-xs uppercase tracking-wide mb-3 text-zinc-500 dark:text-zinc-500">
+                Data Extraction
+              </h2>
+              <div className="space-y-3">
+                <div>
+                  <input
+                    type="text"
+                    value={extractionPrompt}
+                    onChange={(e) => setExtractionPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleGenerateCode();
+                      }
+                    }}
+                    className="w-full px-3 py-2 border-b border-zinc-300 dark:border-zinc-700 bg-transparent text-black dark:text-zinc-50 focus:outline-none focus:border-black dark:focus:border-zinc-50 text-xs"
+                    placeholder="e.g., get the hosts"
+                  />
+                </div>
+                <button
+                  onClick={handleGenerateCode}
+                  disabled={generatingCode || !extractionPrompt || !result}
+                  className="w-full px-3 py-2 bg-black dark:bg-white text-white dark:text-black font-normal hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed text-xs"
+                >
+                  {generatingCode ? "Generating..." : "Generate Code"}
+                </button>
+              </div>
+            </div>
+
+            {generatedCode && (
+              <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+                <h2 className="text-xs uppercase tracking-wide mb-3 text-zinc-500 dark:text-zinc-500">
+                  Generated Code
+                </h2>
+                <pre className="text-xs text-zinc-700 dark:text-zinc-300 overflow-x-auto max-h-96 overflow-y-auto font-mono bg-zinc-50 dark:bg-zinc-900 p-4">
+                  {generatedCode}
+                </pre>
+                <button
+                  onClick={handleExecuteCode}
+                  disabled={executingCode || !generatedCode}
+                  className="mt-3 w-full px-3 py-2 bg-black dark:bg-white text-white dark:text-black font-normal hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed text-xs"
+                >
+                  {executingCode ? "Executing..." : "Execute"}
+                </button>
+              </div>
+            )}
+
+            {extractionResult && (
+              <div className="border-b border-zinc-200 dark:border-zinc-800 pb-4">
+                <h2 className="text-xs uppercase tracking-wide mb-3 text-zinc-500 dark:text-zinc-500">
+                  Extracted Data
+                </h2>
+                <pre className="text-xs text-zinc-700 dark:text-zinc-300 overflow-x-auto max-h-96 overflow-y-auto font-mono">
+                  {JSON.stringify(extractionResult, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {extractionError && (
+              <div className="border-b border-red-300 dark:border-red-800 pb-4">
+                <h2 className="text-xs uppercase tracking-wide mb-2 text-red-600 dark:text-red-400">
+                  Extraction Error
+                </h2>
+                <p className="text-xs text-red-600 dark:text-red-400 font-mono">{extractionError}</p>
               </div>
             )}
           </div>
